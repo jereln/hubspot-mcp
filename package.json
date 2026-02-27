@@ -1,0 +1,18 @@
+{
+  "name": "hubspot-clay-sandbox",
+  "version": "1.0.0",
+  "description": "Sandbox for testing HubSpot and Clay API requests",
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "hubspot": "node scripts/hubspot-example.js",
+    "clay": "node scripts/clay-example.js",
+    "pageviews": "node scripts/get-page-view-history.js",
+    "sequences": "node scripts/sequence-effectiveness.js"
+  },
+  "dependencies": {
+    "@hubspot/api-client": "^11.0.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {}
+}
