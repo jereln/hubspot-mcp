@@ -4,3 +4,8 @@ dist/
 .mcp.json
 .DS_Store
 .claude/
+
+# Internal data exports
+*.csv
+sequence-effectiveness-*
+linkedin-lead-gen-strategy.md
