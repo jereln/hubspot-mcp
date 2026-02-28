@@ -4,83 +4,117 @@
  */
 
 // ── Action type labels ─────────────────────────────────────────────
+// HubSpot v4 uses both numeric IDs ("0-5") and string IDs ("SET_CONTACT_PROPERTY")
 
 const ACTION_LABELS: Record<string, string> = {
-  // Communication
+  // Numeric action type IDs (v4 API)
+  "0-1": "Delay",
+  "0-2": "IF/THEN",
+  "0-3": "Send Email",
+  "0-4": "Send Internal Email",
+  "0-5": "Set Property",
+  "0-6": "Copy Property",
+  "0-7": "Create Task",
+  "0-8": "Send Notification",
+  "0-9": "Add to List",
+  "0-10": "Remove from List",
+  "0-11": "Webhook",
+  "0-12": "Delay Until Date",
+  "0-13": "Create Record",
+  "0-14": "Delete Record",
+  "0-15": "Enroll in Workflow",
+  "0-16": "Unenroll from Workflow",
+  "0-17": "Rotate Owner",
+  "0-18": "Custom Code",
+  "0-19": "Format Data",
+  "0-20": "A/B Test",
+  "0-21": "Value Branch",
+  "0-22": "Send In-App Email",
+  "0-35": "Manage Subscription",
+  // String action type IDs (legacy / some contexts)
   SEND_EMAIL: "Send Email",
   SEND_IN_APP_EMAIL: "Send In-App Email",
-  // Delays
   DELAY: "Delay",
   DELAY_UNTIL_DATE: "Delay Until Date",
-  DELAY_UNTIL_EVENT: "Delay Until Event",
-  // Branching
   IF_THEN_BRANCH: "IF/THEN",
   VALUE_BRANCH: "Value Branch",
   RANDOM_BRANCH: "A/B Test",
-  // CRM operations
-  SET_CONTACT_PROPERTY: "Set Contact Property",
-  SET_COMPANY_PROPERTY: "Set Company Property",
-  SET_DEAL_PROPERTY: "Set Deal Property",
-  SET_TICKET_PROPERTY: "Set Ticket Property",
-  SET_CUSTOM_OBJECT_PROPERTY: "Set Custom Object Property",
+  SET_CONTACT_PROPERTY: "Set Property",
+  SET_COMPANY_PROPERTY: "Set Property",
+  SET_DEAL_PROPERTY: "Set Property",
+  SET_TICKET_PROPERTY: "Set Property",
   COPY_PROPERTY: "Copy Property",
   CREATE_RECORD: "Create Record",
   DELETE_RECORD: "Delete Record",
-  // Enrollment
   ENROLL_IN_WORKFLOW: "Enroll in Workflow",
   UNENROLL_FROM_WORKFLOW: "Unenroll from Workflow",
-  REMOVE_FROM_WORKFLOW: "Remove from Workflow",
-  // Lists
   ADD_TO_LIST: "Add to List",
   REMOVE_FROM_LIST: "Remove from List",
-  // Tasks & notifications
   CREATE_TASK: "Create Task",
   SEND_NOTIFICATION: "Send Notification",
   SEND_INTERNAL_EMAIL: "Send Internal Email",
-  SEND_INTERNAL_SMS: "Send Internal SMS",
-  // Ads
-  ADD_TO_ADS_AUDIENCE: "Add to Ads Audience",
-  REMOVE_FROM_ADS_AUDIENCE: "Remove from Ads Audience",
-  // Integrations
   WEBHOOK: "Webhook",
   CUSTOM_CODE: "Custom Code",
-  TRIGGER_WORKFLOW: "Trigger Workflow",
-  // Association
-  SET_ASSOCIATION_LABEL: "Set Association Label",
-  REMOVE_ASSOCIATION: "Remove Association",
-  // Data management
+  ROTATE_OWNER: "Rotate Owner",
   FORMAT_DATA: "Format Data",
   MANAGE_SUBSCRIPTION: "Manage Subscription",
-  // Rotation
-  ROTATE_OWNER: "Rotate Owner",
-  // Communication subscriptions
-  MANAGE_COMMUNICATION_SUBSCRIPTION: "Manage Communication Sub",
-  // Salesforce
-  CREATE_SALESFORCE_OBJECT: "Create Salesforce Object",
 };
 
-function getActionLabel(actionTypeId: string): string {
+function getActionLabel(actionTypeId: string | undefined | null): string {
+  if (!actionTypeId) return "Branch";
   return ACTION_LABELS[actionTypeId] || actionTypeId;
 }
 
 // ── Detail extraction ──────────────────────────────────────────────
+// v4 API returns fields as an object: { property_name: "x", value: { staticValue: "y", type: "STATIC_VALUE" } }
 
-interface ActionField {
-  name: string;
-  value: unknown;
-  type?: string;
+function getFieldValue(fields: Record<string, unknown> | undefined, key: string): unknown {
+  if (!fields) return undefined;
+  const val = fields[key];
+  if (val && typeof val === "object") {
+    const obj = val as Record<string, unknown>;
+    if ("staticValue" in obj) return obj.staticValue;
+    // TIMESTAMP type → human-readable label
+    if (obj.type === "TIMESTAMP") {
+      const ts = obj.timestampType as string | undefined;
+      if (ts === "EXECUTION_TIME") return "(current date/time)";
+      return ts ? `(${ts.toLowerCase().replace(/_/g, " ")})` : "(timestamp)";
+    }
+    // If it's still an object with a type, summarize it
+    if ("type" in obj) return `(${String(obj.type).toLowerCase().replace(/_/g, " ")})`;
+  }
+  return val;
 }
 
 function extractDetail(action: WorkflowAction): string | null {
-  const fields = (action.fields ?? []) as ActionField[];
-  const getField = (name: string) =>
-    fields.find((f) => f.name === name)?.value;
+  const fields = action.fields as Record<string, unknown> | undefined;
+  const typeId = action.actionTypeId ?? "";
 
-  const typeId = action.actionTypeId;
+  // No type ID (branch actions)
+  if (!typeId) return null;
 
-  if (typeId === "DELAY") {
-    const amount = getField("delay.amount") ?? getField("delayMillis");
-    const unit = getField("delay.unit");
+  // Set Property (numeric "0-5" or string "SET_*_PROPERTY")
+  if (typeId === "0-5" || (typeId.startsWith("SET_") && typeId.endsWith("_PROPERTY"))) {
+    const prop = getFieldValue(fields, "property_name") ?? getFieldValue(fields, "propertyName");
+    const val = getFieldValue(fields, "value") ?? getFieldValue(fields, "propertyValue");
+    if (prop && val) {
+      const valStr = String(val);
+      const truncated = valStr.length > 50 ? valStr.slice(0, 47) + "..." : valStr;
+      return `${prop} = ${truncated}`;
+    }
+    if (prop) return `${prop}`;
+    return null;
+  }
+
+  // Delay
+  if (typeId === "0-1" || typeId === "DELAY") {
+    // v4 uses delta + time_unit
+    const delta = getFieldValue(fields, "delta");
+    const timeUnit = getFieldValue(fields, "time_unit");
+    if (delta && timeUnit) return `${delta} ${String(timeUnit).toLowerCase()}`;
+    // Legacy fields
+    const amount = getFieldValue(fields, "delay.amount") ?? getFieldValue(fields, "delayMillis");
+    const unit = getFieldValue(fields, "delay.unit");
     if (amount && unit) return `${amount} ${unit}`.toLowerCase();
     if (amount) {
       const ms = Number(amount);
@@ -94,22 +128,24 @@ function extractDetail(action: WorkflowAction): string | null {
     return null;
   }
 
-  if (typeId === "SEND_EMAIL" || typeId === "SEND_IN_APP_EMAIL") {
-    const emailId = getField("emailId") ?? getField("email");
+  // Send Email / Send Internal Email
+  if (typeId === "0-3" || typeId === "0-4" || typeId === "0-22" || typeId === "SEND_EMAIL" || typeId === "SEND_IN_APP_EMAIL" || typeId === "SEND_INTERNAL_EMAIL") {
+    const emailId = getFieldValue(fields, "emailId") ?? getFieldValue(fields, "email") ?? getFieldValue(fields, "content_id");
     return emailId ? `ID: ${emailId}` : null;
   }
 
-  if (typeId.startsWith("SET_") && typeId.endsWith("_PROPERTY")) {
-    const prop = getField("propertyName") ?? getField("property");
-    const val = getField("propertyValue") ?? getField("value");
-    if (prop && val) return `${prop} = ${val}`;
-    if (prop) return `${prop}`;
+  // Copy Property
+  if (typeId === "0-6" || typeId === "COPY_PROPERTY") {
+    const src = getFieldValue(fields, "sourceProperty") ?? getFieldValue(fields, "source_property");
+    const dst = getFieldValue(fields, "targetProperty") ?? getFieldValue(fields, "target_property");
+    if (src && dst) return `${src} → ${dst}`;
     return null;
   }
 
-  if (typeId === "WEBHOOK") {
-    const method = getField("httpMethod") ?? getField("method") ?? "POST";
-    const url = getField("url") ?? getField("webhookUrl");
+  // Webhook
+  if (typeId === "0-11" || typeId === "WEBHOOK") {
+    const method = getFieldValue(fields, "httpMethod") ?? getFieldValue(fields, "method") ?? "POST";
+    const url = getFieldValue(fields, "url") ?? getFieldValue(fields, "webhookUrl");
     if (url) {
       const urlStr = String(url);
       const truncated = urlStr.length > 40 ? urlStr.slice(0, 37) + "..." : urlStr;
@@ -118,13 +154,15 @@ function extractDetail(action: WorkflowAction): string | null {
     return null;
   }
 
-  if (typeId === "CUSTOM_CODE") {
-    const runtime = getField("runtime") ?? getField("language");
+  // Custom Code
+  if (typeId === "0-18" || typeId === "CUSTOM_CODE") {
+    const runtime = getFieldValue(fields, "runtime") ?? getFieldValue(fields, "language");
     return runtime ? `Runtime: ${runtime}` : null;
   }
 
-  if (typeId === "CREATE_TASK") {
-    const subject = getField("subject") ?? getField("taskSubject");
+  // Create Task
+  if (typeId === "0-7" || typeId === "CREATE_TASK") {
+    const subject = getFieldValue(fields, "subject") ?? getFieldValue(fields, "taskSubject");
     return subject ? `"${String(subject).slice(0, 30)}"` : null;
   }
 
@@ -143,13 +181,46 @@ interface BranchConnection extends Connection {
   style?: string;
 }
 
+interface ListBranch {
+  branchName?: string;
+  connection?: Connection;
+  filterBranch?: unknown;
+}
+
 export interface WorkflowAction {
   actionId: string;
-  actionTypeId: string;
+  actionTypeId?: string | null;
   type: string; // SINGLE_CONNECTION, LIST_BRANCH, STATIC_BRANCH, AB_TEST_BRANCH, etc.
-  fields?: unknown[];
+  fields?: Record<string, unknown>;
   connection?: Connection;
   connections?: BranchConnection[];
+  // v4 LIST_BRANCH fields
+  listBranches?: ListBranch[];
+  defaultBranch?: Connection;
+  defaultBranchName?: string;
+}
+
+export interface EnrollmentCriteria {
+  type?: string; // EVENT_BASED, LIST_BASED
+  shouldReEnroll?: boolean;
+  eventFilterBranches?: Array<{
+    eventTypeId?: string;
+    operator?: string;
+    filterBranchType?: string;
+    filters?: Array<{ property?: string; filterType?: string; operator?: string; listId?: string }>;
+  }>;
+  listMembershipFilterBranches?: Array<{
+    filters?: Array<{ listId?: string; operator?: string; filterType?: string }>;
+  }>;
+  listFilterBranch?: {
+    filterBranches?: Array<{
+      filters?: Array<{
+        property?: string;
+        filterType?: string;
+        operation?: { operator?: string };
+      }>;
+    }>;
+  };
 }
 
 export interface WorkflowFlow {
@@ -160,6 +231,7 @@ export interface WorkflowFlow {
   triggerType?: string;
   startActionId?: string;
   actions: WorkflowAction[];
+  enrollmentCriteria?: EnrollmentCriteria;
 }
 
 // ── Renderer ───────────────────────────────────────────────────────
@@ -260,7 +332,7 @@ function renderAction(
   const stepNum = ctx.stepCounter;
   ctx.visited.set(actionId, stepNum);
 
-  const label = getActionLabel(action.actionTypeId);
+  const label = getActionLabel(action.actionTypeId ?? null);
   const detail = extractDetail(action);
   const boxLines: string[] = [`${stepNum}. ${label}`];
   if (detail) {
@@ -273,6 +345,23 @@ function renderAction(
     action.type === "LIST_BRANCH" ||
     action.type === "STATIC_BRANCH" ||
     action.type === "AB_TEST_BRANCH";
+
+  // v4 LIST_BRANCH uses listBranches + defaultBranch
+  if (isBranch && action.listBranches && action.listBranches.length > 0) {
+    // Convert v4 listBranches to normalized connections
+    const normalized: BranchConnection[] = action.listBranches.map((lb) => ({
+      nextActionId: lb.connection?.nextActionId ?? "",
+      branchName: lb.branchName,
+    }));
+    if (action.defaultBranch) {
+      normalized.push({
+        nextActionId: action.defaultBranch.nextActionId,
+        branchName: action.defaultBranchName ?? "Default",
+      });
+    }
+    const normalizedAction = { ...action, connections: normalized };
+    return renderBranch(normalizedAction, boxLines, stepNum, ctx, depth);
+  }
 
   if (isBranch && action.connections && action.connections.length > 0) {
     return renderBranch(action, boxLines, stepNum, ctx, depth);
@@ -415,15 +504,84 @@ function renderBranch(
 
 // ── Public API ─────────────────────────────────────────────────────
 
+// Known HubSpot event type prefixes
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  "4": "Form submission",
+  "6": "Page view",
+  "10": "Email open",
+  "11": "Email click",
+  "1": "Contact property change",
+  "3": "Deal property change",
+};
+
+function describeTrigger(ec: EnrollmentCriteria | undefined): string[] {
+  if (!ec) return [];
+  const lines: string[] = [];
+
+  const reEnroll = ec.shouldReEnroll ? "Re-enroll: on" : "Re-enroll: off";
+
+  if (ec.type === "EVENT_BASED") {
+    // Event-based triggers
+    const events = ec.eventFilterBranches ?? [];
+    if (events.length > 0) {
+      for (const branch of events) {
+        const eventId = branch.eventTypeId ?? "";
+        const prefix = eventId.split("-")[0];
+        const eventLabel = EVENT_TYPE_LABELS[prefix] || `Event ${eventId}`;
+        const op = branch.operator === "HAS_COMPLETED" ? "completed" : (branch.operator ?? "").toLowerCase();
+        lines.push(`When: ${eventLabel} ${op}`);
+      }
+    }
+    // List membership triggers within event-based
+    const listBranches = ec.listMembershipFilterBranches ?? [];
+    for (const branch of listBranches) {
+      for (const filter of branch.filters ?? []) {
+        if (filter.filterType === "IN_LIST" && filter.listId) {
+          lines.push(`When: Added to list ${filter.listId}`);
+        }
+      }
+    }
+    if (lines.length === 0) {
+      lines.push("Trigger: Event-based");
+    }
+  } else if (ec.type === "LIST_BASED") {
+    // List/filter-based triggers
+    const branches = ec.listFilterBranch?.filterBranches ?? [];
+    for (const branch of branches) {
+      for (const filter of branch.filters ?? []) {
+        if (filter.filterType === "PROPERTY" && filter.property) {
+          const op = filter.operation?.operator?.toLowerCase().replace(/_/g, " ") ?? "";
+          lines.push(`When: ${filter.property} ${op}`);
+        }
+      }
+    }
+    if (lines.length === 0) {
+      lines.push("Trigger: Filter-based");
+    }
+  } else if (ec.type) {
+    lines.push(`Trigger: ${ec.type.toLowerCase().replace(/_/g, " ")}`);
+  }
+
+  lines.push(reEnroll);
+  return lines;
+}
+
 export function renderWorkflow(flow: WorkflowFlow): string {
   const lines: string[] = [];
 
   // Header
   const status = flow.isEnabled ? "enabled" : "disabled";
   const title = `${flow.name} (${status})`;
-  const trigger = flow.triggerType ? `Trigger: ${flow.triggerType}` : "";
   const headerLines = [title];
-  if (trigger) headerLines.push(trigger);
+
+  // Add trigger info
+  const triggerLines = describeTrigger(flow.enrollmentCriteria);
+  if (triggerLines.length > 0) {
+    headerLines.push(""); // blank separator
+    headerLines.push(...triggerLines);
+  } else if (flow.triggerType) {
+    headerLines.push(`Trigger: ${flow.triggerType}`);
+  }
 
   const contentWidth = Math.max(30, ...headerLines.map((l) => l.length));
   const border = "═".repeat(contentWidth + 2);

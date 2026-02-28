@@ -97,6 +97,7 @@ export function registerWorkflowTools(
           triggerType: workflow.triggerType,
           startActionId: workflow.startActionId,
           actions: workflow.actions,
+          enrollmentCriteria: workflow.enrollmentCriteria,
         };
 
         const ascii = renderWorkflow(flow);

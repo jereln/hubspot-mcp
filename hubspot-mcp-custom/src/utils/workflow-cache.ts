@@ -4,7 +4,7 @@
 
 import { HubSpotClient } from "../client.js";
 import { fuzzyMatch } from "./fuzzy.js";
-import type { WorkflowAction } from "./workflow-renderer.js";
+import type { WorkflowAction, EnrollmentCriteria } from "./workflow-renderer.js";
 
 export interface WorkflowSummary {
   id: string;
@@ -14,18 +14,27 @@ export interface WorkflowSummary {
   triggerType?: string;
   startActionId?: string;
   actions: WorkflowAction[];
+  enrollmentCriteria?: EnrollmentCriteria;
+}
+
+interface FlowListItem {
+  id: string;
+  name: string;
+  isEnabled: boolean;
+  objectTypeId?: string;
+  triggerType?: string;
+  startActionId?: string;
+  actions?: WorkflowAction[];
+  enrollmentCriteria?: EnrollmentCriteria;
 }
 
 interface FlowListResponse {
-  flows: Array<{
-    id: string;
-    name: string;
-    isEnabled: boolean;
-    objectTypeId?: string;
-    triggerType?: string;
-    startActionId?: string;
-    actions?: WorkflowAction[];
-  }>;
+  results: FlowListItem[];
+  paging?: {
+    next?: {
+      after: string;
+    };
+  };
 }
 
 interface FlowDetailResponse {
@@ -36,6 +45,7 @@ interface FlowDetailResponse {
   triggerType?: string;
   startActionId?: string;
   actions?: WorkflowAction[];
+  enrollmentCriteria?: EnrollmentCriteria;
 }
 
 interface BatchReadResponse {
@@ -54,13 +64,17 @@ export class WorkflowCache {
   private async ensureLoaded(): Promise<void> {
     if (this.workflows !== null) return;
 
-    // Fetch flow list (summaries)
-    const listData = await this.client.get<FlowListResponse>(
-      "/automation/v4/flows",
-      { limit: 500 }
-    );
-
-    const flows = listData.flows ?? [];
+    // Fetch all flows with pagination (API max is 100 per page)
+    const flows: FlowListItem[] = [];
+    let after: string | undefined;
+    do {
+      const page = await this.client.get<FlowListResponse>(
+        "/automation/v4/flows",
+        { limit: 100, ...(after ? { after } : {}) }
+      );
+      flows.push(...(page.results ?? []));
+      after = page.paging?.next?.after;
+    } while (after);
 
     // If the list endpoint already returns full details (actions), use them directly
     const needsDetail = flows.some((f) => !f.actions || f.actions.length === 0);
@@ -74,6 +88,7 @@ export class WorkflowCache {
         triggerType: f.triggerType,
         startActionId: f.startActionId,
         actions: f.actions ?? [],
+        enrollmentCriteria: f.enrollmentCriteria,
       }));
       return;
     }
@@ -107,6 +122,7 @@ export class WorkflowCache {
         triggerType: detail?.triggerType ?? f.triggerType,
         startActionId: detail?.startActionId ?? f.startActionId,
         actions: detail?.actions ?? f.actions ?? [],
+        enrollmentCriteria: detail?.enrollmentCriteria ?? f.enrollmentCriteria,
       };
     });
   }
@@ -124,15 +140,9 @@ export class WorkflowCache {
     return matches.map((m) => m.item);
   }
 
-  /** Get a single workflow by ID (from cache or direct fetch). */
+  /** Get a single workflow by ID. Always fetches full details from API. */
   async getById(flowId: string): Promise<WorkflowSummary | null> {
-    // Try cache first
-    if (this.workflows) {
-      const cached = this.workflows.find((w) => w.id === flowId);
-      if (cached) return cached;
-    }
-
-    // Direct fetch
+    // Direct fetch for full details (list endpoint omits actions)
     try {
       const data = await this.client.get<FlowDetailResponse>(
         `/automation/v4/flows/${flowId}`
@@ -145,6 +155,7 @@ export class WorkflowCache {
         triggerType: data.triggerType,
         startActionId: data.startActionId,
         actions: data.actions ?? [],
+        enrollmentCriteria: data.enrollmentCriteria,
       };
     } catch {
       return null;
