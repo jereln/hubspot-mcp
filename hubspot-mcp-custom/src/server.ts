@@ -14,6 +14,8 @@ import { registerMarketingTools } from "./tools/marketing.js";
 import { registerAnalyticsTools } from "./tools/analytics.js";
 import { registerSequenceTools } from "./tools/sequences.js";
 import { registerListTools } from "./tools/lists.js";
+import { WorkflowCache } from "./utils/workflow-cache.js";
+import { registerWorkflowTools } from "./tools/workflows.js";
 
 export function createServer(): McpServer {
   const accessToken = process.env.HUBSPOT_ACCESS_TOKEN;
@@ -36,6 +38,7 @@ export function createServer(): McpServer {
 
   const client = new HubSpotClient(accessToken);
   const pipelineCache = new PipelineCache(client);
+  const workflowCache = new WorkflowCache(client);
 
   // Register all tool groups
   registerDiscoveryTools(server, client);
@@ -46,6 +49,7 @@ export function createServer(): McpServer {
   registerAnalyticsTools(server, client);
   registerSequenceTools(server, client);
   registerListTools(server, client);
+  registerWorkflowTools(server, client, workflowCache);
 
   return server;
 }

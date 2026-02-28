@@ -156,6 +156,9 @@ function getSuggestion(
     if (path.includes("analytics")) {
       return "Analytics API may require Marketing Hub Professional or Enterprise.";
     }
+    if (path.includes("automation")) {
+      return "Workflows API requires the 'automation' scope on your Private App.";
+    }
     return "Check that your Private App has the required scopes for this endpoint.";
   }
   if (status === 401) {

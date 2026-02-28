@@ -1,6 +1,6 @@
 # HubSpot MCP Server
 
-Read-only, LLM-optimized [Model Context Protocol](https://modelcontextprotocol.io/introduction) server for [HubSpot](https://hubspot.com/) CRM. 20 focused tools (down from 128 in the original fork), modular architecture, fuzzy pipeline/stage name resolution, and rich LLM instructions.
+Read-only, LLM-optimized [Model Context Protocol](https://modelcontextprotocol.io/introduction) server for [HubSpot](https://hubspot.com/) CRM. 22 focused tools (down from 128 in the original fork), modular architecture, fuzzy pipeline/stage name resolution, workflow visualization, and rich LLM instructions.
 
 ## Prerequisites
 
@@ -98,10 +98,18 @@ Add to your MCP client config (e.g. `.mcp.json` for Claude Code):
 | `list_sequences` | List sales sequences (auto-resolves userId from CRM owners if omitted) |
 | `get_sequence_enrollments` | Get enrollment data for a sequence |
 
+### Workflows
+
+| Tool | Description |
+|------|-------------|
+| `list_workflows` | List workflows with optional fuzzy name search (e.g. "onboarding") and enabled-only filter |
+| `get_workflow` | Get full workflow details by flow ID — returns an ASCII visualization of the action graph plus complete structured JSON |
+
 ## Key Features
 
 - **Read-only**: No create, update, or delete operations
-- **Fuzzy pipeline/stage matching**: Pass human-readable names like "Sales Pipeline" or "Closed Won" to `search_crm` — they're resolved to HubSpot internal IDs automatically
+- **Workflow visualization**: `get_workflow` renders the full action graph as an ASCII box-and-arrow diagram — branches, delays, conditions, and convergence points
+- **Fuzzy matching**: Pass human-readable names like "Sales Pipeline" or "Closed Won" to `search_crm`, or search workflow names with `list_workflows` — fuzzy-matched automatically
 - **Batch operations**: `get_associations` accepts an array of up to 1,000 IDs; `get_objects_batch` fetches up to 100 objects in one call
 - **Custom object support**: Search and fetch custom objects like organizations (`2-26247562`) alongside standard CRM objects
 - **Structured errors**: Responses include status, category, message, and actionable suggestions
@@ -125,9 +133,12 @@ src/
     marketing.ts            list_email_campaigns, get_email_campaign, list_marketing_events
     lists.ts                search_lists, get_list_memberships
     sequences.ts            list_sequences, get_sequence_enrollments
+    workflows.ts            list_workflows, get_workflow
   utils/
     fuzzy.ts                Levenshtein distance, fuzzy string matching
     pipeline-cache.ts       Pipeline/stage cache with fuzzy name-to-ID resolution
+    workflow-cache.ts       Workflow cache with fuzzy name search
+    workflow-renderer.ts    ASCII box-and-arrow visualization engine
 ```
 
 ## License

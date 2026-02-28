@@ -1,6 +1,6 @@
 # HubSpot MCP Server
 
-Read-only [Model Context Protocol](https://modelcontextprotocol.io/introduction) server for [HubSpot](https://hubspot.com/) CRM. 20 focused tools, fuzzy pipeline/stage name resolution, and built-in LLM instructions.
+Read-only [Model Context Protocol](https://modelcontextprotocol.io/introduction) server for [HubSpot](https://hubspot.com/) CRM. 22 focused tools, fuzzy pipeline/stage name resolution, workflow visualization, and built-in LLM instructions.
 
 ## Quick Start
 
@@ -29,6 +29,7 @@ Go to **Settings > Integrations > Private Apps** in HubSpot and create a new app
 | `sales-email-read` | `list_sequences`, `get_sequence_enrollments` |
 | `content` | `list_email_campaigns`, `get_email_campaign` |
 | `analytics.read` | `get_analytics` |
+| `automation` | `list_workflows`, `get_workflow` |
 
 Copy the access token from the Private App page.
 
@@ -56,7 +57,7 @@ For other MCP clients (Cursor, Windsurf, etc.), use the same `command`, `args`, 
 
 ### 4. Verify
 
-In Claude Code, run `/mcp` to check the server is connected and all 20 tools are registered.
+In Claude Code, run `/mcp` to check the server is connected and all 22 tools are registered.
 
 ## Tools
 
@@ -119,10 +120,18 @@ In Claude Code, run `/mcp` to check the server is connected and all 20 tools are
 | `list_sequences` | List sales sequences (auto-resolves userId if omitted) |
 | `get_sequence_enrollments` | Get enrollment status for a contact |
 
+### Workflows
+
+| Tool | Description |
+|------|-------------|
+| `list_workflows` | List workflows with optional fuzzy name search and enabled-only filter |
+| `get_workflow` | Get full workflow details — ASCII visualization of the action graph plus structured JSON |
+
 ## Key Features
 
 - **Read-only** — no create, update, or delete operations
-- **Fuzzy matching** — pass names like "Sales Pipeline" or "Closed Won" to `search_crm` instead of internal IDs
+- **Workflow visualization** — `get_workflow` renders the full action graph as an ASCII diagram with branches, delays, and conditions
+- **Fuzzy matching** — pass names like "Sales Pipeline" or "Closed Won" to `search_crm`, or search workflows by name with `list_workflows`
 - **Batch operations** — `get_associations` handles up to 1,000 IDs; `get_objects_batch` fetches up to 100 objects per call
 - **Built-in LLM instructions** — the server teaches the AI the recommended workflow (discover structure, then search, then get details)
 - **Rate-limit handling** — automatic retry on 429 responses

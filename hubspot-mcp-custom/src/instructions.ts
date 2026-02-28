@@ -85,6 +85,20 @@ HubSpot lists (static or dynamic) group contacts by criteria. Lists are often us
 - Use \`get_list_memberships\` to get the contact IDs in a list, then \`get_objects_batch\` to fetch their details
 - **Marketing events + lists workflow**: The marketing events API returns aggregate participation counts, NOT individual contact associations. To get registrant contact IDs, find the associated HubSpot list via \`search_lists\`, then use \`get_list_memberships\`.
 
+## Workflows (Automations)
+
+HubSpot workflows are automations that run actions on enrolled records. Two tools are available:
+
+- **\`list_workflows\`**: List all workflows, or fuzzy-search by name (e.g. "onboarding", "lead nurture"). Returns flow IDs, names, enabled status.
+- **\`get_workflow\`**: Get full workflow details by flow ID. Returns an ASCII visualization showing the action graph (steps, branches, delays) plus complete structured JSON with all action definitions.
+
+**Workflow patterns:**
+\`\`\`
+list_workflows query: "onboarding"     → find workflows by name
+get_workflow flowId: "12345"           → see full logic as ASCII diagram + JSON
+list_workflows enabled_only: true      → only active workflows
+\`\`\`
+
 ## Gotchas
 - **Search is eventually consistent**: Newly created/updated records may take a few seconds to appear in search results.
 - **Search limit**: The search API returns a maximum of 10,000 results total.
@@ -93,4 +107,5 @@ HubSpot lists (static or dynamic) group contacts by criteria. Lists are often us
 - **Analytics breakdowns**: The analytics API supports breakdowns by \`sources\`, \`geolocation\`, \`utm-campaigns\`, \`utm-contents\`, \`utm-mediums\`, \`utm-sources\`, \`utm-terms\`, \`totals\`.
 - **Sequences require userId**: The \`list_sequences\` tool requires a HubSpot userId. If omitted, it auto-resolves from the first CRM owner. Use \`list_owners\` to see available owner userIds.
 - **Marketing events are aggregate-only**: \`list_marketing_events\` returns event metadata and attendance counts, but does NOT provide individual contact/registrant associations. Use the lists workflow above to get individual registrants.
+- **Workflows API is v4 beta**: The workflow tools use HubSpot's v4 Automation API. Requires the \`automation\` scope on your Private App. Workflow data is read-only.
 `.trim();
