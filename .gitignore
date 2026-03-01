@@ -9,3 +9,10 @@ dist/
 *.csv
 sequence-effectiveness-*
 linkedin-lead-gen-strategy.md
+
+# Sandbox / local-only files
+scripts/
+CLAUDE.md
+.env.example
+/package.json
+/package-lock.json
