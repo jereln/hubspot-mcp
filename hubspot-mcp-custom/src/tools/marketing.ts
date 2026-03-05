@@ -155,14 +155,20 @@ export function registerMarketingTools(server: McpServer, client: HubSpotClient)
 
   server.tool(
     "get_event_participants",
-    "Get individual participants for a marketing event. Returns contact details, attendance state, and timestamps for each participant.",
+    "Get individual participants for a marketing event. Returns contact details, attendance state, and timestamps for each participant. Provide objectId (preferred, auto-resolves external IDs) OR both externalAccountId + externalEventId.",
     {
+      objectId: z
+        .string()
+        .optional()
+        .describe("HubSpot marketing event ID (from list_marketing_events). Preferred — auto-resolves external IDs."),
       externalAccountId: z
         .string()
-        .describe('The external account ID (e.g. Zoom app ID "178192")'),
+        .optional()
+        .describe('The external account ID (e.g. Zoom app ID "178192"). Not needed if objectId is provided.'),
       externalEventId: z
         .string()
-        .describe('The external event ID (e.g. "99472196913-1738776425000")'),
+        .optional()
+        .describe('The external event ID (e.g. "99472196913-1738776425000"). Not needed if objectId is provided.'),
       state: z
         .enum(["REGISTERED", "ATTENDED", "CANCELLED", "NO_SHOW"])
         .optional()
@@ -176,8 +182,23 @@ export function registerMarketingTools(server: McpServer, client: HubSpotClient)
         .optional()
         .describe("Pagination cursor from a previous response"),
     },
-    async ({ externalAccountId, externalEventId, state, limit, after }) => {
+    async ({ objectId, externalAccountId, externalEventId, state, limit, after }) => {
       try {
+        // If objectId provided, resolve external IDs from the event
+        if (objectId && (!externalAccountId || !externalEventId)) {
+          const event = await client.get<Record<string, unknown>>(
+            `/marketing/v3/marketing-events/${encodeURIComponent(objectId)}`
+          );
+          externalAccountId = externalAccountId ?? (event.externalAccountId as string | undefined);
+          externalEventId = externalEventId ?? (event.externalEventId as string | undefined);
+        }
+
+        if (!externalAccountId || !externalEventId) {
+          return formatError(
+            new Error("Provide objectId OR both externalAccountId and externalEventId. Could not resolve external IDs from the event.")
+          );
+        }
+
         const maxResults = limit ?? 100;
         const allResults: unknown[] = [];
         let cursor = after;
