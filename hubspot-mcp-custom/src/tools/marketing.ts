@@ -1,5 +1,6 @@
 /**
- * Marketing tools: list_email_campaigns, get_email_campaign, list_marketing_events
+ * Marketing tools: list_email_campaigns, get_email_campaign, list_marketing_events,
+ * get_event_participants, get_contact_event_history
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -145,6 +146,89 @@ export function registerMarketingTools(server: McpServer, client: HubSpotClient)
             return name.toLowerCase().includes(q);
           });
         }
+        return formatResult(data);
+      } catch (e) {
+        return formatError(e);
+      }
+    }
+  );
+
+  server.tool(
+    "get_event_participants",
+    "Get individual participants for a marketing event. Returns contact details, attendance state, and timestamps for each participant.",
+    {
+      externalAccountId: z
+        .string()
+        .describe('The external account ID (e.g. Zoom app ID "178192")'),
+      externalEventId: z
+        .string()
+        .describe('The external event ID (e.g. "99472196913-1738776425000")'),
+      state: z
+        .enum(["REGISTERED", "ATTENDED", "CANCELLED", "NO_SHOW"])
+        .optional()
+        .describe("Filter by attendance state"),
+      limit: z
+        .number()
+        .optional()
+        .describe("Max participants to return (default 100). Auto-paginates."),
+      after: z
+        .string()
+        .optional()
+        .describe("Pagination cursor from a previous response"),
+    },
+    async ({ externalAccountId, externalEventId, state, limit, after }) => {
+      try {
+        const maxResults = limit ?? 100;
+        const allResults: unknown[] = [];
+        let cursor = after;
+
+        while (allResults.length < maxResults) {
+          const pageSize = Math.min(100, maxResults - allResults.length);
+          const data = await client.get<{
+            results?: unknown[];
+            paging?: { next?: { after?: string } };
+          }>(
+            `/marketing/v3/marketing-events/participations/${encodeURIComponent(externalAccountId)}/${encodeURIComponent(externalEventId)}/breakdown`,
+            { state, limit: pageSize, after: cursor }
+          );
+
+          if (data.results) {
+            allResults.push(...data.results);
+          }
+
+          cursor = data.paging?.next?.after;
+          if (!cursor || !data.results?.length) break;
+        }
+
+        return formatResult({ total: allResults.length, results: allResults });
+      } catch (e) {
+        return formatError(e);
+      }
+    }
+  );
+
+  server.tool(
+    "get_contact_event_history",
+    "Get all marketing events a specific contact participated in. Returns event details, participation states, and timestamps.",
+    {
+      contactIdentifier: z
+        .string()
+        .describe("Contact ID or email address"),
+      limit: z
+        .number()
+        .optional()
+        .describe("Max results to return (default 100)"),
+      after: z
+        .string()
+        .optional()
+        .describe("Pagination cursor from a previous response"),
+    },
+    async ({ contactIdentifier, limit, after }) => {
+      try {
+        const data = await client.get(
+          `/marketing/v3/marketing-events/participations/contacts/${encodeURIComponent(contactIdentifier)}/breakdown`,
+          { limit: limit ?? 100, after }
+        );
         return formatResult(data);
       } catch (e) {
         return formatError(e);

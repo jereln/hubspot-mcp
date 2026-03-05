@@ -32,7 +32,7 @@ src/
     objects.ts              get_object, list_objects, get_associations
     timeline.ts             get_contact_activity, search_engagements
     analytics.ts            get_analytics (web traffic)
-    marketing.ts            list_email_campaigns, get_email_campaign, list_marketing_events
+    marketing.ts            list_email_campaigns, get_email_campaign, list_marketing_events, get_event_participants, get_contact_event_history
     sequences.ts            list_sequences, get_sequence_enrollments
   utils/
     fuzzy.ts                Levenshtein distance, fuzzy string matching
