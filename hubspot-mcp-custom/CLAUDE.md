@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Read-only, LLM-optimized MCP server for HubSpot CRM. Modular architecture with ~18 focused tools (down from 128 in the original fork). Features fuzzy pipeline/stage name resolution, structured errors, and rich LLM instructions.
+Read-only, LLM-optimized MCP server for HubSpot CRM. Modular architecture with 25 focused tools (down from 128 in the original fork). Features fuzzy pipeline/stage name resolution, structured errors, and rich LLM instructions.
 
 ## Build & Run
 
@@ -33,10 +33,14 @@ src/
     timeline.ts             get_contact_activity, search_engagements
     analytics.ts            get_analytics (web traffic)
     marketing.ts            list_email_campaigns, get_email_campaign, list_marketing_events, get_event_participants, get_contact_event_history
+    lists.ts                search_lists, get_list, get_list_memberships
     sequences.ts            list_sequences, get_sequence_enrollments
+    workflows.ts            list_workflows, get_workflow
   utils/
     fuzzy.ts                Levenshtein distance, fuzzy string matching
     pipeline-cache.ts       Pipeline/stage cache with fuzzy name-to-ID resolution
+    workflow-cache.ts       Workflow cache with fuzzy name search
+    workflow-renderer.ts    ASCII box-and-arrow visualization engine
 ```
 
 ## Key Features

@@ -1,6 +1,6 @@
 # HubSpot MCP Server
 
-Read-only, LLM-optimized [Model Context Protocol](https://modelcontextprotocol.io/introduction) server for [HubSpot](https://hubspot.com/) CRM. 22 focused tools (down from 128 in the original fork), modular architecture, fuzzy pipeline/stage name resolution, workflow visualization, and rich LLM instructions.
+Read-only, LLM-optimized [Model Context Protocol](https://modelcontextprotocol.io/introduction) server for [HubSpot](https://hubspot.com/) CRM. 25 focused tools (down from 128 in the original fork), modular architecture, fuzzy pipeline/stage name resolution, workflow visualization, and rich LLM instructions.
 
 ## Prerequisites
 
@@ -77,6 +77,8 @@ Add to your MCP client config (e.g. `.mcp.json` for Claude Code):
 | `list_email_campaigns` | List marketing email campaigns |
 | `get_email_campaign` | Get details for a specific email campaign |
 | `list_marketing_events` | List marketing events |
+| `get_event_participants` | Get individual participants for a marketing event, optionally filtered by state (REGISTERED, ATTENDED, etc.) |
+| `get_contact_event_history` | Get all marketing events a specific contact participated in (by contact ID or email) |
 
 ### Analytics
 
@@ -89,6 +91,7 @@ Add to your MCP client config (e.g. `.mcp.json` for Claude Code):
 | Tool | Description |
 |------|-------------|
 | `search_lists` | Search HubSpot lists by name. Returns list names, IDs, types, and sizes. |
+| `get_list` | Get a list by ID with full definition including filter criteria |
 | `get_list_memberships` | Get contact IDs that are members of a list. Supports pagination. |
 
 ### Sequences
@@ -130,8 +133,8 @@ src/
     objects.ts              get_object, get_objects_batch, list_objects, get_associations
     timeline.ts             get_contact_activity, search_engagements
     analytics.ts            get_analytics
-    marketing.ts            list_email_campaigns, get_email_campaign, list_marketing_events
-    lists.ts                search_lists, get_list_memberships
+    marketing.ts            list_email_campaigns, get_email_campaign, list_marketing_events, get_event_participants, get_contact_event_history
+    lists.ts                search_lists, get_list, get_list_memberships
     sequences.ts            list_sequences, get_sequence_enrollments
     workflows.ts            list_workflows, get_workflow
   utils/
