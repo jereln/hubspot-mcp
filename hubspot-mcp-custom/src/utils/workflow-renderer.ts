@@ -207,7 +207,13 @@ export interface EnrollmentCriteria {
     eventTypeId?: string;
     operator?: string;
     filterBranchType?: string;
-    filters?: Array<{ property?: string; filterType?: string; operator?: string; listId?: string }>;
+    filters?: Array<{
+      property?: string;
+      filterType?: string;
+      operator?: string;
+      listId?: string;
+      operation?: { operator?: string; value?: string | number };
+    }>;
   }>;
   listMembershipFilterBranches?: Array<{
     filters?: Array<{ listId?: string; operator?: string; filterType?: string }>;
@@ -217,7 +223,7 @@ export interface EnrollmentCriteria {
       filters?: Array<{
         property?: string;
         filterType?: string;
-        operation?: { operator?: string };
+        operation?: { operator?: string; value?: string | number };
       }>;
     }>;
   };
@@ -530,6 +536,15 @@ function describeTrigger(ec: EnrollmentCriteria | undefined): string[] {
         const eventLabel = EVENT_TYPE_LABELS[prefix] || `Event ${eventId}`;
         const op = branch.operator === "HAS_COMPLETED" ? "completed" : (branch.operator ?? "").toLowerCase();
         lines.push(`When: ${eventLabel} ${op}`);
+        // Extract property filter details from within the event filter branch
+        for (const filter of branch.filters ?? []) {
+          if (filter.filterType === "PROPERTY" && filter.property) {
+            const filterOp = filter.operation?.operator?.toLowerCase().replace(/_/g, " ") ?? "";
+            const val = filter.operation?.value;
+            const valStr = val != null && String(val).length < 50 ? ` ${val}` : "";
+            lines.push(`  ${filter.property} ${filterOp}${valStr}`);
+          }
+        }
       }
     }
     // List membership triggers within event-based
@@ -538,6 +553,16 @@ function describeTrigger(ec: EnrollmentCriteria | undefined): string[] {
       for (const filter of branch.filters ?? []) {
         if (filter.filterType === "IN_LIST" && filter.listId) {
           lines.push(`When: Added to list ${filter.listId}`);
+        }
+      }
+    }
+    // Also check property filters (workflows can have both event + property triggers)
+    const propBranches = ec.listFilterBranch?.filterBranches ?? [];
+    for (const branch of propBranches) {
+      for (const filter of branch.filters ?? []) {
+        if (filter.filterType === "PROPERTY" && filter.property) {
+          const op = filter.operation?.operator?.toLowerCase().replace(/_/g, " ") ?? "";
+          lines.push(`When: ${filter.property} ${op}`);
         }
       }
     }

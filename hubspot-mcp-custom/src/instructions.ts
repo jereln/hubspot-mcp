@@ -82,6 +82,7 @@ filters: [{ propertyName: "name", operator: "CONTAINS_TOKEN", value: "acme" }]
 ### Lists & Memberships
 HubSpot lists (static or dynamic) group contacts by criteria. Lists are often used alongside marketing events.
 - Use \`search_lists\` with a query to find lists by name (e.g., "Registered for webinar")
+- Use \`get_list\` with a list ID to see the full list definition including filter criteria (filter branches, operators, values)
 - Use \`get_list_memberships\` to get the contact IDs in a list, then \`get_objects_batch\` to fetch their details
 - **Marketing event participation**: Use \`get_event_participants\` to get individual participants for a specific event (requires externalAccountId and externalEventId from \`list_marketing_events\`). Use \`get_contact_event_history\` to see all events a contact participated in.
 - **Fallback via lists**: If participation endpoints aren't available for an event type, find the associated HubSpot list via \`search_lists\`, then use \`get_list_memberships\`.

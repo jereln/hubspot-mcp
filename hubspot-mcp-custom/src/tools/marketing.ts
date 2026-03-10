@@ -189,7 +189,10 @@ export function registerMarketingTools(server: McpServer, client: HubSpotClient)
           const event = await client.get<Record<string, unknown>>(
             `/marketing/v3/marketing-events/${encodeURIComponent(objectId)}`
           );
-          externalAccountId = externalAccountId ?? (event.externalAccountId as string | undefined);
+          const appInfo = event.appInfo as { id?: string } | undefined;
+          externalAccountId = externalAccountId
+            ?? (event.externalAccountId as string | undefined)
+            ?? appInfo?.id;
           externalEventId = externalEventId ?? (event.externalEventId as string | undefined);
         }
 

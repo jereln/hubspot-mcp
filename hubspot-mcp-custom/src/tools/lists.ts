@@ -1,5 +1,5 @@
 /**
- * List tools: search_lists, get_list_memberships
+ * List tools: search_lists, get_list, get_list_memberships
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -48,6 +48,24 @@ export function registerListTools(server: McpServer, client: HubSpotClient): voi
           body.offset = offset;
         }
         const data = await client.post("/crm/v3/lists/search", body);
+        return formatResult(data);
+      } catch (e) {
+        return formatError(e);
+      }
+    }
+  );
+
+  server.tool(
+    "get_list",
+    "Get a HubSpot list by ID. Returns the full list definition including name, type, object type, and filter branch criteria. Use this to inspect the logic of dynamic lists.",
+    {
+      listId: z.string().describe("The HubSpot list ID (ILS list ID)"),
+    },
+    async ({ listId }) => {
+      try {
+        const data = await client.get(`/crm/v3/lists/${listId}`, {
+          includeFilters: true,
+        });
         return formatResult(data);
       } catch (e) {
         return formatError(e);
