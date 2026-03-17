@@ -116,6 +116,22 @@ get_contact_event_history contactIdentifier: "123456"  → events for contact ID
 get_contact_event_history contactIdentifier: "jane@acme.com"  → events for email
 \`\`\`
 
+## Contact Behavioral Events
+
+- **\`get_contact_events\`**: Get the full behavioral event stream for a contact (page views, form submissions, etc.)
+  - Use \`eventType: "e_visited_page"\` for page views specifically
+  - Supports date filtering with \`occurredAfter\`/\`occurredBefore\` (ISO-8601)
+  - Returns individual events with timestamps, properties, and metadata
+  - Requires Marketing Hub Enterprise
+  - More complete than \`get_contact_activity\` page views, which only returns a few recent URL changes from property history
+
+**Event patterns:**
+\`\`\`
+get_contact_events contactId: "123456"                                  → all behavioral events
+get_contact_events contactId: "123456" eventType: "e_visited_page"     → page views only
+get_contact_events contactId: "123456" occurredAfter: "2026-01-01T00:00:00Z"  → events since date
+\`\`\`
+
 ## Gotchas
 - **Search is eventually consistent**: Newly created/updated records may take a few seconds to appear in search results.
 - **Search limit**: The search API returns a maximum of 10,000 results total.

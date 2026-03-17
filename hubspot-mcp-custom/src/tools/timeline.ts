@@ -1,5 +1,5 @@
 /**
- * Timeline tools: get_contact_activity, search_engagements
+ * Timeline tools: get_contact_activity, search_engagements, get_contact_events
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -213,6 +213,60 @@ Engagements come from CRM associations.`,
           `/crm/v3/objects/${engagementType}/search`,
           body
         );
+        return formatResult(data);
+      } catch (e) {
+        return formatError(e);
+      }
+    }
+  );
+
+  server.tool(
+    "get_contact_events",
+    `Get behavioral events for a contact (page views, form submissions, etc.) from HubSpot's Events API. Returns the full event stream with timestamps, properties, and metadata. Requires Marketing Hub Enterprise.
+
+Use eventType "e_visited_page" for page views. Omit eventType to get all behavioral events.`,
+    {
+      contactId: z.string().describe("The contact's HubSpot ID"),
+      eventType: z
+        .string()
+        .optional()
+        .describe(
+          'Filter by event type (e.g., "e_visited_page", "e_submitted_form")'
+        ),
+      occurredAfter: z
+        .string()
+        .optional()
+        .describe("Only events after this ISO-8601 datetime"),
+      occurredBefore: z
+        .string()
+        .optional()
+        .describe("Only events before this ISO-8601 datetime"),
+      limit: z
+        .number()
+        .optional()
+        .describe("Max results per page (default 50)"),
+      after: z.string().optional().describe("Pagination cursor"),
+    },
+    async ({
+      contactId,
+      eventType,
+      occurredAfter,
+      occurredBefore,
+      limit,
+      after,
+    }) => {
+      try {
+        const params: Record<string, string | number> = {
+          objectType: "contact",
+          objectId: contactId,
+          limit: limit ?? 50,
+        };
+        if (eventType) params.eventType = eventType;
+        if (occurredAfter) params.occurredAfter = occurredAfter;
+        if (occurredBefore) params.occurredBefore = occurredBefore;
+        if (after) params.after = after;
+
+        const data = await client.get("/events/v3/events", params);
         return formatResult(data);
       } catch (e) {
         return formatError(e);
