@@ -1,6 +1,6 @@
 # HubSpot MCP Server
 
-Read-only, LLM-optimized [Model Context Protocol](https://modelcontextprotocol.io/introduction) server for [HubSpot](https://hubspot.com/) CRM. 25 focused tools (down from 128 in the original fork), modular architecture, fuzzy pipeline/stage name resolution, workflow visualization, and rich LLM instructions.
+Read-only, LLM-optimized [Model Context Protocol](https://modelcontextprotocol.io/introduction) server for [HubSpot](https://hubspot.com/) CRM. 26 focused tools (down from 128 in the original fork), modular architecture, fuzzy pipeline/stage name resolution, workflow visualization, and rich LLM instructions.
 
 ## Prerequisites
 
@@ -67,7 +67,8 @@ Add to your MCP client config (e.g. `.mcp.json` for Claude Code):
 
 | Tool | Description |
 |------|-------------|
-| `get_contact_activity` | Get a contact's activity timeline (page views, form submissions, etc.) |
+| `get_contact_activity` | Get a contact's activity timeline combining engagements and page view history from property changes |
+| `get_contact_events` | Get the full behavioral event stream for a contact (page views, form submissions, workflow events, etc.) via the Events API. Requires Marketing Hub Enterprise. |
 | `search_engagements` | Search calls, emails, meetings, notes, or tasks |
 
 ### Marketing
@@ -131,7 +132,7 @@ src/
     discovery.ts            list_pipelines, list_properties, list_owners, list_custom_object_schemas
     search.ts               search_crm (unified, with fuzzy pipeline/stage resolution)
     objects.ts              get_object, get_objects_batch, list_objects, get_associations
-    timeline.ts             get_contact_activity, search_engagements
+    timeline.ts             get_contact_activity, get_contact_events, search_engagements
     analytics.ts            get_analytics
     marketing.ts            list_email_campaigns, get_email_campaign, list_marketing_events, get_event_participants, get_contact_event_history
     lists.ts                search_lists, get_list, get_list_memberships
